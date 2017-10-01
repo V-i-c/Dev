@@ -1,0 +1,16 @@
+# Created by http://www.gitignore.io
+
+### Scala ###
+/**/*.log
+
+# sbt specific
+lib/
+target/
+project/project/
+project/target/
+project/build.properties
+
+#IDEA
+.idea/
+*.iml
+
