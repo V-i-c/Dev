@@ -2,14 +2,19 @@ package com.clicktale.performance
 
 import scala.concurrent.{ExecutionContext, Future}
 
-object Runner extends App with MathOnFuture{
+object Runner extends App with CompareOps{
   val runConfigs = RunnerConfigs()
   val repo = AerospikeRepo[Array[Byte],Array[Byte]]()
   implicit val ex = ExecutionContext.global
+  val content = Array.fill(1024)(0.toByte)
 
+  timeWrite(content)
+  println("---------------------------")
+  timeRead()
+  repo.close()
 
   def timeWrite(content:Array[Byte]) = {
-    val allIds = 0l to runConfigs.numOfBins
+    val allIds = 0l until runConfigs.numOfBins
     val beforeTime = System.nanoTime()
 
     val writeTimes = allIds.map{ id =>
@@ -39,19 +44,19 @@ object Runner extends App with MathOnFuture{
     }
 
     def averageInsertTime() = {
-      singleInsertTime().reduceLeft(_ + _)/runConfigs.numOfBins.toDouble
+      (singleInsertTime().reduceLeft(_ + _))/runConfigs.numOfBins
     }
     println(
       s"""
-         |All sync writes finished in: $batchInsertTime nano
-         |Minimum sync write finished in: $minInsertTime nano
-         |Maximum sync write finished in: $maxInsertTime nano
-         |Average sync write finished in: $averageInsertTime nano
+         |All sync writes of ${runConfigs.numOfBins} bins finished in: $batchInsertTime nano
+         |Minimum sync write of ${runConfigs.numOfBins} bins finished in: $minInsertTime nano
+         |Maximum sync write of ${runConfigs.numOfBins} bins finished in: $maxInsertTime nano
+         |Average sync write of ${runConfigs.numOfBins} bins finished in: $averageInsertTime nano
        """.stripMargin)
   }
 
   def timeRead() = {
-    val allIds = 0l to runConfigs.numOfBins
+    val allIds = 0l until runConfigs.numOfBins
     val beforeTime = System.nanoTime()
 
     val readTimes = allIds.map{ id =>
@@ -79,14 +84,14 @@ object Runner extends App with MathOnFuture{
       implicit val gt = max
       singleReadTime.reduceLeft(pick)
     }
-    def averageReadTime = singleReadTime.reduceLeft(_+_) / runConfigs.numOfBins.toDouble
+    def averageReadTime = singleReadTime.reduceLeft(_+_) / runConfigs.numOfBins
 
     println(
       s"""
-         |All sync reads finished in: $batchReadTime nano
-         |Minimum sync read finished in: $minReadTime nano
-         |Maximum sync read finished in: $maxReadTime nano
-         |Average sync read finished in: $averageReadTime nano
+         |All sync reads of ${runConfigs.numOfBins} bins finished in: $batchReadTime nano
+         |Minimum sync read of ${runConfigs.numOfBins} bins finished in: $minReadTime nano
+         |Maximum sync read of ${runConfigs.numOfBins} bins finished in: $maxReadTime nano
+         |Average sync read of ${runConfigs.numOfBins} bins finished in: $averageReadTime nano
        """.stripMargin)
   }
 
@@ -96,7 +101,7 @@ object Runner extends App with MathOnFuture{
       val k = repo.writeAsync(id, content)
       k.map(_ => before -> System.nanoTime())
     }
-    val groupOfBins = 0l to runConfigs.numOfBins
+    val groupOfBins = 0l until runConfigs.numOfBins
     val beforeWritesStarted = System.nanoTime()
     val writeTimes = Future.sequence(groupOfBins.map(timedWrite))
 
@@ -126,7 +131,7 @@ object Runner extends App with MathOnFuture{
     def averageBinWrite() = {
       for {
         seq <- writeTimes
-        avg = seq.collect{case (b,a) => a - b}.reduceLeft(_+_)/runConfigs.numOfBins.toDouble
+        avg = seq.collect{case (b,a) => a - b}.reduceLeft(_+_)/runConfigs.numOfBins
       }yield avg
     }
 
@@ -144,10 +149,10 @@ object Runner extends App with MathOnFuture{
       maxt <- maxBinWriteTime()
       avg <- averageBinWrite()
     } println(
-      s"""All async writes finished in: $bt nanos
-         |Minimum async write finished in: $mint nanos
-         |Maximum async write finished in: $maxt nanos
-         |Average async write finished in: $avg nanos
+      s"""All async writes of ${runConfigs.numOfBins} bins finished in: $bt nanos
+         |Minimum async write of ${runConfigs.numOfBins} bins finished in: $mint nanos
+         |Maximum async write of ${runConfigs.numOfBins} bins finished in: $maxt nanos
+         |Average async write of ${runConfigs.numOfBins} bins finished in: $avg nanos
        """.stripMargin)
   }
 
@@ -159,7 +164,7 @@ object Runner extends App with MathOnFuture{
     }
 
     val timeBeforeAllReads = System.nanoTime()
-    val readTimes = Future.sequence((0l to runConfigs.numOfBins).map(timedRead))
+    val readTimes = Future.sequence((0l until runConfigs.numOfBins).map(timedRead))
 
 
     def batchReadNanos() = {
@@ -181,7 +186,7 @@ object Runner extends App with MathOnFuture{
 
     def averageBinRead() = for {
       seq <- readTimes
-      avg = seq.collect{case (b,a) => a-b}.reduceLeft(_+_)/runConfigs.numOfBins.toDouble
+      avg = seq.collect{case (b,a) => a-b}.reduceLeft(_+_)/runConfigs.numOfBins
     } yield avg
 
 
@@ -196,10 +201,10 @@ object Runner extends App with MathOnFuture{
       maxt <- maxBinReadTime()
       avg <- averageBinRead()
     } println(
-      s"""All async reads finished in: $bt nanos
-         |Minimum async reads finished in: $mint nanos
-         |Maximum async reads finished in: $maxt nanos
-         |Average async reads finished in: $avg nanos
+      s"""All async reads of ${runConfigs.numOfBins} bins finished in: $bt nanos
+         |Minimum async of ${runConfigs.numOfBins} bins reads finished in: $mint nanos
+         |Maximum async of ${runConfigs.numOfBins} bins reads finished in: $maxt nanos
+         |Average async of ${runConfigs.numOfBins} bins reads finished in: $avg nanos
        """.stripMargin)
   }
 }

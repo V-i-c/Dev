@@ -1,6 +1,6 @@
 package com.clicktale.performance
 
-trait MathOnFuture {
+trait CompareOps {
   val max = (x:Long,y:Long) => x > y
   val min = (x:Long,y:Long) => x < y
 

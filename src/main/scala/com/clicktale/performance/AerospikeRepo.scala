@@ -12,12 +12,14 @@ class AerospikeRepo[+A,-B] private (private val client:AsyncClient,conf:ClientCo
 
   private val defaultWrPolicy = {
     val pol = new WritePolicy
-    pol.maxRetries  = 0
+    pol.maxRetries  = 10
     pol.setTimeout(conf.timeout)
-    val noExpiration = 1
+    val noExpiration = -1
     pol.expiration = noExpiration
     pol
   }
+
+  def close() = client.close()
 
   def writeAsync(sid:Long, content:B)(implicit ex:ExecutionContext) = {
     val bin = new Bin(conf.binName, content)
