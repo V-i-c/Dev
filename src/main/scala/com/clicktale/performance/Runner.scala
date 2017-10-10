@@ -1,19 +1,31 @@
 package com.clicktale.performance
 
 import scala.concurrent.{ExecutionContext, Future}
+import scala.util.Random
 
 object Runner extends App with CompareOps{
   val runConfigs = RunnerConfigs()
   val repo = AerospikeRepo[Array[Byte],Array[Byte]]()
   implicit val ex = ExecutionContext.global
-  val content = Array.fill(1024)(0.toByte)
+  val kb = 1024
+  val x = Array.fill(10 * kb)(0.toByte)
+  val y = Array.fill(15 * kb)(0.toByte)
+  val z = Array.fill(20 * kb)(0.toByte)
+
+  def content = {
+    new Random().nextInt(2) match {
+      case 0 => x
+      case 1 => y
+      case 2 => z
+    }
+  }
 
   timeWrite(content)
   println("---------------------------")
   timeRead()
   repo.close()
 
-  def timeWrite(content:Array[Byte]) = {
+  def timeWrite(content: => Array[Byte]) = {
     val allIds = 0l until runConfigs.numOfBins
     val beforeTime = System.nanoTime()
 
