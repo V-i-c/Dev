@@ -8,3 +8,5 @@ libraryDependencies ++= Seq(
  "com.aerospike" % "aerospike-client" % "4.0.8",
  "com.typesafe" % "config" % "1.3.1"
 )
+
+assemblyJarName in assembly := "aerospike_benchmark_128_sync.jar"
