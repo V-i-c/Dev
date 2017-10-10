@@ -42,7 +42,10 @@ object Runner extends App with CompareOps{
       implicit val gt = max
       singleInsertTime().reduceLeft(pick)
     }
-
+    def medianInsertTime() = {
+      val sorted = singleInsertTime().sorted
+      sorted(runConfigs.numOfBins/2)
+    }
     def averageInsertTime() = {
       (singleInsertTime().reduceLeft(_ + _))/runConfigs.numOfBins
     }
@@ -51,6 +54,7 @@ object Runner extends App with CompareOps{
          |All sync writes of ${runConfigs.numOfBins} bins finished in: $batchInsertTime nano
          |Minimum sync write of ${runConfigs.numOfBins} bins finished in: $minInsertTime nano
          |Maximum sync write of ${runConfigs.numOfBins} bins finished in: $maxInsertTime nano
+         |Median sync write of ${runConfigs.numOfBins} bins finished in: $medianInsertTime nano
          |Average sync write of ${runConfigs.numOfBins} bins finished in: $averageInsertTime nano
        """.stripMargin)
   }
@@ -85,12 +89,16 @@ object Runner extends App with CompareOps{
       singleReadTime.reduceLeft(pick)
     }
     def averageReadTime = singleReadTime.reduceLeft(_+_) / runConfigs.numOfBins
-
+    def medianReadTime() = {
+      val sorted = singleReadTime.sorted
+      sorted(runConfigs.numOfBins/2)
+    }
     println(
       s"""
          |All sync reads of ${runConfigs.numOfBins} bins finished in: $batchReadTime nano
          |Minimum sync read of ${runConfigs.numOfBins} bins finished in: $minReadTime nano
          |Maximum sync read of ${runConfigs.numOfBins} bins finished in: $maxReadTime nano
+         |Median sync read of ${runConfigs.numOfBins} bins finished in: $medianReadTime nano
          |Average sync read of ${runConfigs.numOfBins} bins finished in: $averageReadTime nano
        """.stripMargin)
   }
@@ -128,6 +136,13 @@ object Runner extends App with CompareOps{
       } yield insertionsTime
     }
 
+    def medinanBinWriteTime() = {
+      for {
+        seq <- writeTimes
+        insertionsTime = seq.collect{case (b,a) => a - b}.sorted
+      }yield insertionsTime(runConfigs.numOfBins/2)
+    }
+
     def averageBinWrite() = {
       for {
         seq <- writeTimes
@@ -148,10 +163,12 @@ object Runner extends App with CompareOps{
       mint <- minBinWriteTime()
       maxt <- maxBinWriteTime()
       avg <- averageBinWrite()
+      med <- medinanBinWriteTime()
     } println(
       s"""All async writes of ${runConfigs.numOfBins} bins finished in: $bt nanos
          |Minimum async write of ${runConfigs.numOfBins} bins finished in: $mint nanos
          |Maximum async write of ${runConfigs.numOfBins} bins finished in: $maxt nanos
+         |Median async write of ${runConfigs.numOfBins} bins finished in: $med nanos
          |Average async write of ${runConfigs.numOfBins} bins finished in: $avg nanos
        """.stripMargin)
   }
@@ -190,6 +207,11 @@ object Runner extends App with CompareOps{
     } yield avg
 
 
+    def medianBinReadTime() = for {
+      seq <- readTimes
+      sorted = seq.collect{case (b,a) => a-b}.sorted
+    }yield sorted(runConfigs.numOfBins/2)
+
     def maxBinReadTime () = singleBinReadTime(max)
 
 
@@ -200,10 +222,12 @@ object Runner extends App with CompareOps{
       mint <- minBinReadTime()
       maxt <- maxBinReadTime()
       avg <- averageBinRead()
+      med <- medianBinReadTime()
     } println(
       s"""All async reads of ${runConfigs.numOfBins} bins finished in: $bt nanos
          |Minimum async of ${runConfigs.numOfBins} bins reads finished in: $mint nanos
          |Maximum async of ${runConfigs.numOfBins} bins reads finished in: $maxt nanos
+         |Media async of ${runConfigs.numOfBins} bins reads finished in: $med nanos
          |Average async of ${runConfigs.numOfBins} bins reads finished in: $avg nanos
        """.stripMargin)
   }
