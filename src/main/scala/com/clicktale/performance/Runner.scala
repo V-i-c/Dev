@@ -1,12 +1,17 @@
 package com.clicktale.performance
 
-import scala.concurrent.{ExecutionContext, Future}
+import java.util.concurrent.Executors
+
+import com.aerospike.client.AerospikeException
+
+import scala.concurrent.duration.Duration
+import scala.concurrent.{Await, ExecutionContext, Future}
 import scala.util.Random
 
-object Runner extends App with CompareOps{
+object Runner extends App with CompareOps with DeamonTheadFactory{
   val runConfigs = RunnerConfigs()
   val repo = AerospikeRepo[Array[Byte],Array[Byte]]()
-  implicit val ex = ExecutionContext.global
+  implicit val ec = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(8,deamonFactory))
   val kb = 1024
   val x = Array.fill(10 * kb)(0.toByte)
   val y = Array.fill(15 * kb)(0.toByte)
@@ -28,9 +33,11 @@ object Runner extends App with CompareOps{
     }
   }
 
-  timeWrite(content)
+  val wait1 = asyncTimeWrite(content)
+  Await.result(wait1, Duration.Inf)
   println("---------------------------")
-  timeRead()
+  val wait2 = asyncTimeRead()
+  Await.result(wait2, Duration.Inf)
   repo.close()
 
   def timeWrite(content: => Array[Byte]) = {
@@ -194,24 +201,26 @@ object Runner extends App with CompareOps{
       minMaxBinWriteTime(min)
     }
 
-    for {
+    (for {
       wt <- singleBinWriteTime()
       bt <- batchWriteNanos()
       mint <- minBinWriteTime()
       maxt <- maxBinWriteTime()
       avg <- averageBinWrite()
       med <- medinanBinWriteTime()
-    } println(
+    } yield println(
       s"""All async writes of ${runConfigs.numOfBins} bins finished in: ${bt/1000000000d} seconds
          |Minimum async write of ${runConfigs.numOfBins} bins finished in: ${mint/1000000d} millis
          |Maximum async write of ${runConfigs.numOfBins} bins finished in: ${maxt/1000000d} millis
          |Median async write of ${runConfigs.numOfBins} bins finished in: ${med/1000000d} millis
          |Average async write of ${runConfigs.numOfBins} bins finished in: ${avg/1000000d} millis
-         |Percentile 90% of sync write of ${runConfigs.numOfBins} bins is: ${percentile(90.0f)(wt) / 1000000d} millis
-         |Percentile 95% of sync write of ${runConfigs.numOfBins} bins is: ${percentile(95.0f)(wt) / 1000000d} millis
-         |Percentile 99% of sync write of ${runConfigs.numOfBins} bins is: ${percentile(99.0f)(wt) / 1000000d} millis
-         |Percentile 99.9% of sync write of ${runConfigs.numOfBins} bins is: ${percentile(99.9f)(wt) / 1000000d} millis
-       """.stripMargin)
+         |Percentile 90% of async write of ${runConfigs.numOfBins} bins is: ${percentile(90.0f)(wt) / 1000000d} millis
+         |Percentile 95% of async write of ${runConfigs.numOfBins} bins is: ${percentile(95.0f)(wt) / 1000000d} millis
+         |Percentile 99% of async write of ${runConfigs.numOfBins} bins is: ${percentile(99.0f)(wt) / 1000000d} millis
+         |Percentile 99.9% of async write of ${runConfigs.numOfBins} bins is: ${percentile(99.9f)(wt) / 1000000d} millis
+       """.stripMargin)) recover {
+      case ex:AerospikeException => println(s"An exception occurred while writing to aerospike:\n ${ex.getMessage}")
+    }
   }
 
   def asyncTimeRead() = {
@@ -265,23 +274,25 @@ object Runner extends App with CompareOps{
 
     def minBinReadTime() = minMaxBiReadTime(min)
 
-    for {
+    (for {
       rt <- singleBinReadTime()
       bt <- batchReadNanos()
       mint <- minBinReadTime()
       maxt <- maxBinReadTime()
       avg <- averageBinRead()
       med <- medianBinReadTime()
-    } println(
+    } yield println(
       s"""All async reads of ${runConfigs.numOfBins} bins finished in: ${bt/1000000000d} seconds
          |Minimum async of ${runConfigs.numOfBins} bins reads finished in: ${mint/1000000d} millis
          |Maximum async of ${runConfigs.numOfBins} bins reads finished in: ${maxt/1000000d} millis
          |Media async of ${runConfigs.numOfBins} bins reads finished in: ${med/1000000d} millis
          |Average async of ${runConfigs.numOfBins} bins reads finished in: ${avg/1000000d} millis
-         |Percentile 90% of sync read of ${runConfigs.numOfBins} bins is: ${percentile(90.0f)(rt) / 1000000d} millis
-         |Percentile 95% of sync read of ${runConfigs.numOfBins} bins is: ${percentile(95.0f)(rt) / 1000000d} millis
-         |Percentile 99% of sync read of ${runConfigs.numOfBins} bins is: ${percentile(99.0f)(rt) / 1000000d} millis
-         |Percentile 99.9% of sync read of ${runConfigs.numOfBins} bins is: ${percentile(99.9f)(rt) / 1000000d} millis
-       """.stripMargin)
+         |Percentile 90% of async read of ${runConfigs.numOfBins} bins is: ${percentile(90.0f)(rt) / 1000000d} millis
+         |Percentile 95% of async read of ${runConfigs.numOfBins} bins is: ${percentile(95.0f)(rt) / 1000000d} millis
+         |Percentile 99% of async read of ${runConfigs.numOfBins} bins is: ${percentile(99.0f)(rt) / 1000000d} millis
+         |Percentile 99.9% of async read of ${runConfigs.numOfBins} bins is: ${percentile(99.9f)(rt) / 1000000d} millis
+       """.stripMargin)) recover {
+      case ex:AerospikeException => println(s"An exception occurred while writing to aerospike:\n ${ex.getMessage}")
+    }
   }
 }
