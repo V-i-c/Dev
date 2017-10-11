@@ -12,6 +12,14 @@ object Runner extends App with CompareOps{
   val y = Array.fill(15 * kb)(0.toByte)
   val z = Array.fill(20 * kb)(0.toByte)
 
+  def percentile(p: Float)(seq: Seq[Long]) = {
+    require(p >= 0f && p <= 100f)                      // some value requirements
+    require(!seq.isEmpty)                            // more value requirements
+    val sorted = seq.sorted
+    val k = math.ceil((seq.length - 1) * (p / 100)).toInt
+    sorted(k)
+  }
+
   def content = {
     new Random().nextInt(2) match {
       case 0 => x
@@ -61,6 +69,7 @@ object Runner extends App with CompareOps{
     def averageInsertTime() = {
       (singleInsertTime().reduceLeft(_ + _))/runConfigs.numOfBins
     }
+
     println(
       s"""
          |All sync writes of ${runConfigs.numOfBins} bins finished in: ${batchInsertTime/1000000000d} seconds
@@ -68,6 +77,10 @@ object Runner extends App with CompareOps{
          |Maximum sync write of ${runConfigs.numOfBins} bins finished in: ${maxInsertTime/1000000d} millis
          |Median sync write of ${runConfigs.numOfBins} bins finished in: ${medianInsertTime/1000000d} millis
          |Average sync write of ${runConfigs.numOfBins} bins finished in: ${averageInsertTime/1000000d} millis
+         |Percentile 90% of sync write of ${runConfigs.numOfBins} bins is: ${percentile(90.0f)(singleInsertTime())/1000000d} millis
+         |Percentile 95% of sync write of ${runConfigs.numOfBins} bins is: ${percentile(95.0f)(singleInsertTime())/1000000d} millis
+         |Percentile 99% of sync write of ${runConfigs.numOfBins} bins is: ${percentile(99.0f)(singleInsertTime())/1000000d} millis
+         |Percentile 99.9% of sync write of ${runConfigs.numOfBins} bins is: ${percentile(99.9f)(singleInsertTime())/1000000d} millis
        """.stripMargin)
   }
 
@@ -82,7 +95,7 @@ object Runner extends App with CompareOps{
       before -> after
     }
 
-    def singleReadTime = {
+    def singleReadTime() = {
       readTimes.map{case (b,a) => a-b}
     }
 
@@ -112,6 +125,10 @@ object Runner extends App with CompareOps{
          |Maximum sync read of ${runConfigs.numOfBins} bins finished in: ${maxReadTime/1000000d} millis
          |Median sync read of ${runConfigs.numOfBins} bins finished in: ${medianReadTime/1000000d} millis
          |Average sync read of ${runConfigs.numOfBins} bins finished in: ${averageReadTime/1000000d} millis
+         |Percentile 90% of sync read of ${runConfigs.numOfBins} bins is: ${percentile(90.0f)(singleReadTime()) / 1000000d} millis
+         |Percentile 95% of sync read of ${runConfigs.numOfBins} bins is: ${percentile(95.0f)(singleReadTime()) / 1000000d} millis
+         |Percentile 99% of sync read of ${runConfigs.numOfBins} bins is: ${percentile(99.0f)(singleReadTime()) / 1000000d} millis
+         |Percentile 99.9% of sync read of ${runConfigs.numOfBins} bins is: ${percentile(99.9f)(singleReadTime()) / 1000000d} millis
        """.stripMargin)
   }
 
@@ -141,11 +158,18 @@ object Runner extends App with CompareOps{
     }
 
 
-    def singleBinWriteTime(implicit f:(Long,Long) => Boolean) = {
+    def singleBinWriteTime() = {
       for {
-       seq <- writeTimes
-       insertionsTime = seq.collect{case (b,a) => a - b}.reduceLeft(pick)
+        seq <- writeTimes
+        insertionsTime = seq.collect{case (b,a) => a - b}
       } yield insertionsTime
+    }
+
+    def minMaxBinWriteTime(implicit f:(Long,Long) => Boolean) = {
+      for {
+        seq1 <- singleBinWriteTime()
+        insertionTime = seq1.reduceLeft(pick)
+      } yield insertionTime
     }
 
     def medinanBinWriteTime() = {
@@ -163,14 +187,15 @@ object Runner extends App with CompareOps{
     }
 
     def maxBinWriteTime() = {
-      singleBinWriteTime(max)
+      minMaxBinWriteTime(max)
     }
 
     def minBinWriteTime() = {
-      singleBinWriteTime(min)
+      minMaxBinWriteTime(min)
     }
 
     for {
+      wt <- singleBinWriteTime()
       bt <- batchWriteNanos()
       mint <- minBinWriteTime()
       maxt <- maxBinWriteTime()
@@ -182,6 +207,10 @@ object Runner extends App with CompareOps{
          |Maximum async write of ${runConfigs.numOfBins} bins finished in: ${maxt/1000000d} millis
          |Median async write of ${runConfigs.numOfBins} bins finished in: ${med/1000000d} millis
          |Average async write of ${runConfigs.numOfBins} bins finished in: ${avg/1000000d} millis
+         |Percentile 90% of sync write of ${runConfigs.numOfBins} bins is: ${percentile(90.0f)(wt) / 1000000d} millis
+         |Percentile 95% of sync write of ${runConfigs.numOfBins} bins is: ${percentile(95.0f)(wt) / 1000000d} millis
+         |Percentile 99% of sync write of ${runConfigs.numOfBins} bins is: ${percentile(99.0f)(wt) / 1000000d} millis
+         |Percentile 99.9% of sync write of ${runConfigs.numOfBins} bins is: ${percentile(99.9f)(wt) / 1000000d} millis
        """.stripMargin)
   }
 
@@ -206,10 +235,17 @@ object Runner extends App with CompareOps{
     }
 
 
-    def singleBinReadTime(implicit f:(Long,Long) => Boolean) = {
+    def singleBinReadTime() = {
       for {
         seq <- readTimes
-        t = seq.collect{case (b,a) => a-b}.reduceLeft(pick)
+        readTimes = seq.collect{case (b,a) => a-b}
+      }yield readTimes
+    }
+
+    def minMaxBiReadTime(implicit f:(Long,Long) => Boolean) = {
+      for {
+        seq <- singleBinReadTime()
+        t = seq.reduceLeft(pick)
       } yield t
     }
 
@@ -224,12 +260,13 @@ object Runner extends App with CompareOps{
       sorted = seq.collect{case (b,a) => a-b}.sorted
     }yield sorted(runConfigs.numOfBins/2)
 
-    def maxBinReadTime () = singleBinReadTime(max)
+    def maxBinReadTime () = minMaxBiReadTime(max)
 
 
-    def minBinReadTime() = singleBinReadTime(min)
+    def minBinReadTime() = minMaxBiReadTime(min)
 
     for {
+      rt <- singleBinReadTime()
       bt <- batchReadNanos()
       mint <- minBinReadTime()
       maxt <- maxBinReadTime()
@@ -241,6 +278,10 @@ object Runner extends App with CompareOps{
          |Maximum async of ${runConfigs.numOfBins} bins reads finished in: ${maxt/1000000d} millis
          |Media async of ${runConfigs.numOfBins} bins reads finished in: ${med/1000000d} millis
          |Average async of ${runConfigs.numOfBins} bins reads finished in: ${avg/1000000d} millis
+         |Percentile 90% of sync read of ${runConfigs.numOfBins} bins is: ${percentile(90.0f)(rt) / 1000000d} millis
+         |Percentile 95% of sync read of ${runConfigs.numOfBins} bins is: ${percentile(95.0f)(rt) / 1000000d} millis
+         |Percentile 99% of sync read of ${runConfigs.numOfBins} bins is: ${percentile(99.0f)(rt) / 1000000d} millis
+         |Percentile 99.9% of sync read of ${runConfigs.numOfBins} bins is: ${percentile(99.9f)(rt) / 1000000d} millis
        """.stripMargin)
   }
 }
