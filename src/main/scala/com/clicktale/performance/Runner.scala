@@ -63,11 +63,11 @@ object Runner extends App with CompareOps{
     }
     println(
       s"""
-         |All sync writes of ${runConfigs.numOfBins} bins finished in: $batchInsertTime nano
-         |Minimum sync write of ${runConfigs.numOfBins} bins finished in: $minInsertTime nano
-         |Maximum sync write of ${runConfigs.numOfBins} bins finished in: $maxInsertTime nano
-         |Median sync write of ${runConfigs.numOfBins} bins finished in: $medianInsertTime nano
-         |Average sync write of ${runConfigs.numOfBins} bins finished in: $averageInsertTime nano
+         |All sync writes of ${runConfigs.numOfBins} bins finished in: ${batchInsertTime/1000000000d} seconds
+         |Minimum sync write of ${runConfigs.numOfBins} bins finished in: ${minInsertTime/1000000d} millis
+         |Maximum sync write of ${runConfigs.numOfBins} bins finished in: ${maxInsertTime/1000000d} millis
+         |Median sync write of ${runConfigs.numOfBins} bins finished in: ${medianInsertTime/1000000d} millis
+         |Average sync write of ${runConfigs.numOfBins} bins finished in: ${averageInsertTime/1000000d} millis
        """.stripMargin)
   }
 
@@ -107,15 +107,15 @@ object Runner extends App with CompareOps{
     }
     println(
       s"""
-         |All sync reads of ${runConfigs.numOfBins} bins finished in: $batchReadTime nano
-         |Minimum sync read of ${runConfigs.numOfBins} bins finished in: $minReadTime nano
-         |Maximum sync read of ${runConfigs.numOfBins} bins finished in: $maxReadTime nano
-         |Median sync read of ${runConfigs.numOfBins} bins finished in: $medianReadTime nano
-         |Average sync read of ${runConfigs.numOfBins} bins finished in: $averageReadTime nano
+         |All sync reads of ${runConfigs.numOfBins} bins finished in: ${batchReadTime/1000000000d} seconds
+         |Minimum sync read of ${runConfigs.numOfBins} bins finished in: ${minReadTime/1000000d} millis
+         |Maximum sync read of ${runConfigs.numOfBins} bins finished in: ${maxReadTime/1000000d} millis
+         |Median sync read of ${runConfigs.numOfBins} bins finished in: ${medianReadTime/1000000d} millis
+         |Average sync read of ${runConfigs.numOfBins} bins finished in: ${averageReadTime/1000000d} millis
        """.stripMargin)
   }
 
-  def asyncTimeWrite(content:Array[Byte]) = {
+  def asyncTimeWrite(content: => Array[Byte]) = {
     def timedWrite(id: Long) = {
       val before = System.nanoTime()
       val k = repo.writeAsync(id, content)
@@ -177,11 +177,11 @@ object Runner extends App with CompareOps{
       avg <- averageBinWrite()
       med <- medinanBinWriteTime()
     } println(
-      s"""All async writes of ${runConfigs.numOfBins} bins finished in: $bt nanos
-         |Minimum async write of ${runConfigs.numOfBins} bins finished in: $mint nanos
-         |Maximum async write of ${runConfigs.numOfBins} bins finished in: $maxt nanos
-         |Median async write of ${runConfigs.numOfBins} bins finished in: $med nanos
-         |Average async write of ${runConfigs.numOfBins} bins finished in: $avg nanos
+      s"""All async writes of ${runConfigs.numOfBins} bins finished in: ${bt/1000000000d} seconds
+         |Minimum async write of ${runConfigs.numOfBins} bins finished in: ${mint/1000000d} millis
+         |Maximum async write of ${runConfigs.numOfBins} bins finished in: ${maxt/1000000d} millis
+         |Median async write of ${runConfigs.numOfBins} bins finished in: ${med/1000000d} millis
+         |Average async write of ${runConfigs.numOfBins} bins finished in: ${avg/1000000d} millis
        """.stripMargin)
   }
 
@@ -236,11 +236,11 @@ object Runner extends App with CompareOps{
       avg <- averageBinRead()
       med <- medianBinReadTime()
     } println(
-      s"""All async reads of ${runConfigs.numOfBins} bins finished in: $bt nanos
-         |Minimum async of ${runConfigs.numOfBins} bins reads finished in: $mint nanos
-         |Maximum async of ${runConfigs.numOfBins} bins reads finished in: $maxt nanos
-         |Media async of ${runConfigs.numOfBins} bins reads finished in: $med nanos
-         |Average async of ${runConfigs.numOfBins} bins reads finished in: $avg nanos
+      s"""All async reads of ${runConfigs.numOfBins} bins finished in: ${bt/1000000000d} seconds
+         |Minimum async of ${runConfigs.numOfBins} bins reads finished in: ${mint/1000000d} millis
+         |Maximum async of ${runConfigs.numOfBins} bins reads finished in: ${maxt/1000000d} millis
+         |Media async of ${runConfigs.numOfBins} bins reads finished in: ${med/1000000d} millis
+         |Average async of ${runConfigs.numOfBins} bins reads finished in: ${avg/1000000d} millis
        """.stripMargin)
   }
 }
