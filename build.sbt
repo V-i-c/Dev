@@ -9,4 +9,4 @@ libraryDependencies ++= Seq(
  "com.typesafe" % "config" % "1.3.1"
 )
 
-assemblyJarName in assembly := "aerospike_benchmark_256_async.jar"
+assemblyJarName in assembly := "aerospike_benchmark_512_async.jar"
