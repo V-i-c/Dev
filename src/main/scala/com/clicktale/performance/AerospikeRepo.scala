@@ -65,7 +65,7 @@ object AerospikeRepo {
 
   private def client() = {
     val asyncPolicy = new AsyncClientPolicy
-    val tout = 1000
+    val tout = 10000
     asyncPolicy.timeout = tout
     asyncPolicy.readPolicyDefault.setTimeout(tout)
     asyncPolicy.writePolicyDefault.setTimeout(tout)
