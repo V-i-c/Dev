@@ -11,7 +11,8 @@ import scala.util.Random
 object Runner extends App with CompareOps with DeamonTheadFactory{
   val runConfigs = RunnerConfigs()
   val repo = AerospikeRepo[Array[Byte],Array[Byte]]()
-  implicit val ec = ExecutionContext.fromExecutor(Executors.newFixedThreadPool(8,deamonFactory))
+  private val service = Executors.newFixedThreadPool(8)
+  implicit val ec = ExecutionContext.fromExecutor(service)
   val kb = 1024
   val x = Array.fill(10 * kb)(0.toByte)
   val y = Array.fill(15 * kb)(0.toByte)
@@ -38,6 +39,7 @@ object Runner extends App with CompareOps with DeamonTheadFactory{
   println("---------------------------")
   val wait2 = asyncTimeRead()
   Await.result(wait2, Duration.Inf)
+  service.shutdown()
   repo.close()
 
   def timeWrite(content: => Array[Byte]) = {
