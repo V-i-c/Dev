@@ -10,7 +10,7 @@ import scala.util.Random
 
 object Runner extends App with CompareOps with DeamonTheadFactory{
   val runConfigs = RunnerConfigs()
-  val repo = AerospikeRepo[Array[Byte],Array[Byte]]()
+  val repo = AerospikeAsyncRepo[Array[Byte],Array[Byte]]()
   private val service = Executors.newFixedThreadPool(8)
   implicit val ec = ExecutionContext.fromExecutor(service)
   val kb = 1024
